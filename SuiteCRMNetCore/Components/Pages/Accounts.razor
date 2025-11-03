@@ -1,0 +1,60 @@
+@page "/accounts"
+@using SuiteCRMNetCore.Models
+@using SuiteCRMNetCore.Data
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.EntityFrameworkCore
+@inject AppDbContext Db
+
+<h3>Accounts</h3>
+
+@if (accounts == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>SIC Code</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var account in accounts)
+            {
+                <tr>
+                    <td>@account.Name</td>
+                    <td>@account.SicCode</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<h4>Add Account</h4>
+<EditForm Model="newAccount" OnValidSubmit="AddAccount">
+    <InputText @bind-Value="newAccount.Name" placeholder="Name" /> <br />
+    <InputText @bind-Value="newAccount.SicCode" placeholder="SIC Code" /> <br />
+    <button type="submit">Add</button>
+</EditForm>
+
+@code {
+    private List<Account>? accounts;
+    private Account newAccount = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        accounts = await Db.Accounts.ToListAsync();
+    }
+
+    private async Task AddAccount()
+    {
+        newAccount.Id = Guid.NewGuid();
+        Db.Accounts.Add(newAccount);
+        await Db.SaveChangesAsync();
+        accounts = await Db.Accounts.ToListAsync();
+        newAccount = new Account();
+        StateHasChanged();
+    }
+}

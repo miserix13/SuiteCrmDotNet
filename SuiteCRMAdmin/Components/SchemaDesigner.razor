@@ -1,0 +1,86 @@
+@using SuiteCRMNetCore.Models
+@using SuiteCRMAdmin.Services
+
+<h1>Schema Designer</h1>
+<p>Visualize and customize your business object schemas.</p>
+
+@inject ModelSchemaService SchemaService
+@inject MigrationService MigrationService
+
+<div class="designer-container">
+    <div class="object-list">
+        <h3>Business Objects</h3>
+        <ul>
+            @foreach (var objType in BusinessObjectTypes)
+            {
+                <li>
+                    <button class="btn btn-link" @onclick="() => SelectObject(objType)">@objType.Name</button>
+                </li>
+            }
+        </ul>
+    </div>
+    <div class="object-details">
+        <h3>Object Details</h3>
+        @if (SelectedType != null)
+        {
+            <h4>@SelectedType.Name Fields</h4>
+            <table class="table">
+                <thead>
+                    <tr><th>Name</th><th>Type</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var prop in SchemaService.GetProperties(SelectedType))
+                    {
+                        <tr>
+                            <td>@prop.Name</td>
+                            <td>@prop.PropertyType.Name</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <button class="btn btn-primary" @onclick="ApplyMigration">Apply Schema Changes & Run Migration</button>
+            @if (!string.IsNullOrEmpty(MigrationStatus))
+            {
+                <div class="mt-2 alert @(MigrationSuccess ? "alert-success" : "alert-danger")">@MigrationStatus</div>
+            }
+        }
+        else
+        {
+            <p>Select a business object to view and edit its fields and relationships.</p>
+        }
+    </div>
+</div>
+
+@code {
+    List<Type> BusinessObjectTypes = new();
+    Type? SelectedType;
+    string MigrationStatus = string.Empty;
+    bool MigrationSuccess = false;
+
+    protected override void OnInitialized()
+    {
+        BusinessObjectTypes = SchemaService.GetBusinessObjectTypes().ToList();
+    }
+
+    void SelectObject(Type type)
+    {
+        SelectedType = type;
+        MigrationStatus = string.Empty;
+    }
+
+    async Task ApplyMigration()
+    {
+        // For demo: use static migration name, project path, and context name
+        var migrationName = $"Update_{SelectedType?.Name}_{DateTime.Now:yyyyMMddHHmmss}";
+        var projectPath = "../../../../SuiteCRMNetCore.csproj"; // Adjust path as needed
+        var contextName = "AppDbContext"; // Change if your context is named differently
+        MigrationStatus = "Running migration...";
+        StateHasChanged();
+        await Task.Run(() =>
+        {
+            MigrationSuccess = MigrationService.GenerateAndApplyMigration(migrationName, projectPath, contextName);
+        });
+        MigrationStatus = MigrationSuccess ? "Migration applied successfully." : "Migration failed. Check logs for details.";
+        StateHasChanged();
+    }
+}
